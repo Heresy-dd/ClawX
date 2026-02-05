@@ -11,6 +11,7 @@ import {
   Loader2,
   Terminal,
   ExternalLink,
+  Key,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useSettingsStore } from '@/stores/settings';
 import { useGatewayStore } from '@/stores/gateway';
+import { ProvidersSettings } from '@/components/settings/ProvidersSettings';
 
 export function Settings() {
   const {
@@ -106,6 +108,20 @@ export function Settings() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+      
+      {/* AI Providers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            AI Providers
+          </CardTitle>
+          <CardDescription>Configure your AI model providers and API keys</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProvidersSettings />
         </CardContent>
       </Card>
       

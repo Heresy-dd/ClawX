@@ -4,6 +4,21 @@
  */
 import { ipcMain, BrowserWindow, shell, dialog, app } from 'electron';
 import { GatewayManager } from '../gateway/manager';
+import {
+  storeApiKey,
+  getApiKey,
+  deleteApiKey,
+  hasApiKey,
+  saveProvider,
+  getProvider,
+  getAllProviders,
+  deleteProvider,
+  setDefaultProvider,
+  getDefaultProvider,
+  getAllProvidersWithKeyInfo,
+  isEncryptionAvailable,
+  type ProviderConfig,
+} from '../utils/secure-storage';
 
 /**
  * Register all IPC handlers
@@ -14,6 +29,9 @@ export function registerIpcHandlers(
 ): void {
   // Gateway handlers
   registerGatewayHandlers(gatewayManager, mainWindow);
+  
+  // Provider handlers
+  registerProviderHandlers();
   
   // Shell handlers
   registerShellHandlers();
@@ -132,6 +150,136 @@ function registerGatewayHandlers(
   gatewayManager.on('error', (error) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('gateway:error', error.message);
+    }
+  });
+}
+
+/**
+ * Provider-related IPC handlers
+ */
+function registerProviderHandlers(): void {
+  // Check if encryption is available
+  ipcMain.handle('provider:encryptionAvailable', () => {
+    return isEncryptionAvailable();
+  });
+  
+  // Get all providers with key info
+  ipcMain.handle('provider:list', async () => {
+    return await getAllProvidersWithKeyInfo();
+  });
+  
+  // Get a specific provider
+  ipcMain.handle('provider:get', async (_, providerId: string) => {
+    return await getProvider(providerId);
+  });
+  
+  // Save a provider configuration
+  ipcMain.handle('provider:save', async (_, config: ProviderConfig, apiKey?: string) => {
+    try {
+      // Save the provider config
+      await saveProvider(config);
+      
+      // Store the API key if provided
+      if (apiKey) {
+        await storeApiKey(config.id, apiKey);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+  
+  // Delete a provider
+  ipcMain.handle('provider:delete', async (_, providerId: string) => {
+    try {
+      await deleteProvider(providerId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+  
+  // Update API key for a provider
+  ipcMain.handle('provider:setApiKey', async (_, providerId: string, apiKey: string) => {
+    try {
+      await storeApiKey(providerId, apiKey);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+  
+  // Delete API key for a provider
+  ipcMain.handle('provider:deleteApiKey', async (_, providerId: string) => {
+    try {
+      await deleteApiKey(providerId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+  
+  // Check if a provider has an API key
+  ipcMain.handle('provider:hasApiKey', async (_, providerId: string) => {
+    return await hasApiKey(providerId);
+  });
+  
+  // Get the actual API key (for internal use only - be careful!)
+  ipcMain.handle('provider:getApiKey', async (_, providerId: string) => {
+    return await getApiKey(providerId);
+  });
+  
+  // Set default provider
+  ipcMain.handle('provider:setDefault', async (_, providerId: string) => {
+    try {
+      await setDefaultProvider(providerId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
+  
+  // Get default provider
+  ipcMain.handle('provider:getDefault', async () => {
+    return await getDefaultProvider();
+  });
+  
+  // Validate API key by making a test request (simulated for now)
+  ipcMain.handle('provider:validateKey', async (_, providerId: string, apiKey: string) => {
+    // In a real implementation, this would make a test API call to the provider
+    // For now, we'll just do basic format validation
+    try {
+      // Basic validation based on provider type
+      const provider = await getProvider(providerId);
+      if (!provider) {
+        return { valid: false, error: 'Provider not found' };
+      }
+      
+      switch (provider.type) {
+        case 'anthropic':
+          if (!apiKey.startsWith('sk-ant-')) {
+            return { valid: false, error: 'Anthropic keys should start with sk-ant-' };
+          }
+          break;
+        case 'openai':
+          if (!apiKey.startsWith('sk-')) {
+            return { valid: false, error: 'OpenAI keys should start with sk-' };
+          }
+          break;
+        case 'google':
+          if (apiKey.length < 20) {
+            return { valid: false, error: 'Google API key seems too short' };
+          }
+          break;
+      }
+      
+      // Simulate API validation delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      return { valid: true };
+    } catch (error) {
+      return { valid: false, error: String(error) };
     }
   });
 }
