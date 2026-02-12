@@ -183,7 +183,7 @@ interface ProviderCardProps {
   onSaveEdits: (payload: { newApiKey?: string; updates?: Partial<ProviderConfig> }) => Promise<void>;
   onValidateKey: (
     key: string,
-    options?: { baseUrl?: string }
+    options?: { baseUrl?: string; model?: string }
   ) => Promise<{ valid: boolean; error?: string }>;
 }
 
@@ -229,6 +229,7 @@ function ProviderCard({
         setValidating(true);
         const result = await onValidateKey(newKey, {
           baseUrl: baseUrl.trim() || undefined,
+          model: modelId.trim() || undefined,
         });
         setValidating(false);
         if (!result.valid) {
@@ -426,7 +427,7 @@ interface AddProviderDialogProps {
   onValidateKey: (
     type: string,
     apiKey: string,
-    options?: { baseUrl?: string }
+    options?: { baseUrl?: string; model?: string }
   ) => Promise<{ valid: boolean; error?: string }>;
 }
 
@@ -465,6 +466,7 @@ function AddProviderDialog({ existingTypes, onClose, onAdd, onValidateKey }: Add
       if (requiresKey && apiKey) {
         const result = await onValidateKey(selectedType, apiKey, {
           baseUrl: baseUrl.trim() || undefined,
+          model:modelId.trim() || undefined,
         });
         if (!result.valid) {
           setValidationError(result.error || t('aiProviders.toast.invalidKey'));
